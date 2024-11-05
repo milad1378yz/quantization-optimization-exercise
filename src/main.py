@@ -2,6 +2,9 @@ import numpy as np
 import torch
 import argparse
 import os
+import time
+import multiprocessing
+from functools import partial
 from visualizer import (
     plot_original_vs_quantized,
     plot_with_quantization_levels,
@@ -107,23 +110,44 @@ def non_uniform_quantization(
     optimized_levels = q_levels.detach().cpu().numpy()
 
     # Quantize the full vector using the optimized levels
-    quantized_vector = quantize_vector_in_batches(vector, optimized_levels)
+    quantized_vector = quantize_vector_in_batches(
+        vector, optimized_levels, use_multiprocessing=args.use_multiprocessing
+    )
 
     l2_norm = np.linalg.norm(vector - quantized_vector)
     return quantized_vector, optimized_levels, l2_norm
 
 
-def quantize_vector_in_batches(vector, levels, batch_size=1000000):
+def quantize_batch(batch, levels):
+    """Helper function to quantize a single batch."""
+    return levels[np.argmin(np.abs(batch[:, None] - levels[None, :]), axis=1)]
+
+
+def quantize_vector_in_batches(vector, levels, batch_size=1000000, use_multiprocessing=False):
     """Quantize a large vector in batches to handle memory constraints."""
     quantized_vector = np.empty_like(vector)
     num_batches = int(np.ceil(len(vector) / batch_size))
 
-    for i in range(num_batches):
-        start_idx = i * batch_size
-        end_idx = min((i + 1) * batch_size, len(vector))
-        batch = vector[start_idx:end_idx]
-        quantized_batch = levels[np.argmin(np.abs(batch[:, None] - levels[None, :]), axis=1)]
-        quantized_vector[start_idx:end_idx] = quantized_batch
+    if use_multiprocessing and num_batches > 1:
+        # Prepare batches
+        batches = [
+            vector[i * batch_size : min((i + 1) * batch_size, len(vector))]
+            for i in range(num_batches)
+        ]
+        with multiprocessing.Pool() as pool:
+            results = pool.map(partial(quantize_batch, levels=levels), batches)
+        # Combine results
+        for i, quantized_batch in enumerate(results):
+            start_idx = i * batch_size
+            end_idx = start_idx + len(quantized_batch)
+            quantized_vector[start_idx:end_idx] = quantized_batch
+    else:
+        for i in range(num_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, len(vector))
+            batch = vector[start_idx:end_idx]
+            quantized_batch = quantize_batch(batch, levels)
+            quantized_vector[start_idx:end_idx] = quantized_batch
 
     return quantized_vector
 
@@ -148,6 +172,60 @@ def quantization_loss_with_outliers(v, q_levels, mask):
     distances = (v_normal.view(-1, 1) - q_levels.view(1, -1)) ** 2
     min_distances, _ = distances.min(dim=1)
     return min_distances.mean()
+
+
+def quantize_vector_with_outliers_in_batches(
+    vector, levels, threshold=3.0, batch_size=1000000, use_multiprocessing=False
+):
+    """Quantize a large vector with outlier handling in batches."""
+    quantized_vector = np.empty_like(vector)
+    num_batches = int(np.ceil(len(vector) / batch_size))
+
+    mean = np.mean(vector)
+    std = np.std(vector)
+    lower_bound = mean - threshold * std
+    upper_bound = mean + threshold * std
+
+    if use_multiprocessing and num_batches > 1:
+        # Prepare batches
+        batches = [
+            vector[i * batch_size : min((i + 1) * batch_size, len(vector))]
+            for i in range(num_batches)
+        ]
+        # Prepare partial function with fixed parameters
+        quantize_partial = partial(
+            quantize_batch_with_outliers,
+            levels=levels,
+            lower_bound=lower_bound,
+            upper_bound=upper_bound,
+        )
+        with multiprocessing.Pool() as pool:
+            results = pool.map(quantize_partial, batches)
+        # Combine results
+        for i, quantized_batch in enumerate(results):
+            start_idx = i * batch_size
+            end_idx = start_idx + len(quantized_batch)
+            quantized_vector[start_idx:end_idx] = quantized_batch
+    else:
+        for i in range(num_batches):
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, len(vector))
+            batch = vector[start_idx:end_idx]
+            quantized_batch = quantize_batch_with_outliers(batch, levels, lower_bound, upper_bound)
+            quantized_vector[start_idx:end_idx] = quantized_batch
+
+    return quantized_vector
+
+
+def quantize_batch_with_outliers(batch, levels, lower_bound, upper_bound):
+    """Helper function to quantize a single batch with outlier handling."""
+    outlier_mask = (batch < lower_bound) | (batch > upper_bound)
+    quantized_batch = np.where(
+        outlier_mask,
+        batch,  # Keep outliers in full precision
+        levels[np.argmin(np.abs(batch[:, None] - levels[None, :]), axis=1)],
+    )
+    return quantized_batch
 
 
 def non_uniform_quantization_with_outliers(
@@ -192,35 +270,12 @@ def non_uniform_quantization_with_outliers(
     optimized_levels = q_levels.detach().cpu().numpy()
 
     # Quantize the full vector in batches
-    quantized_vector = quantize_vector_with_outliers_in_batches(vector, optimized_levels, threshold)
+    quantized_vector = quantize_vector_with_outliers_in_batches(
+        vector, optimized_levels, threshold=threshold, use_multiprocessing=args.use_multiprocessing
+    )
 
     l2_norm = np.linalg.norm(vector - quantized_vector)
     return quantized_vector, optimized_levels, l2_norm
-
-
-def quantize_vector_with_outliers_in_batches(vector, levels, threshold=3.0, batch_size=1000000):
-    """Quantize a large vector with outlier handling in batches."""
-    quantized_vector = np.empty_like(vector)
-    num_batches = int(np.ceil(len(vector) / batch_size))
-
-    mean = np.mean(vector)
-    std = np.std(vector)
-    lower_bound = mean - threshold * std
-    upper_bound = mean + threshold * std
-
-    for i in range(num_batches):
-        start_idx = i * batch_size
-        end_idx = min((i + 1) * batch_size, len(vector))
-        batch = vector[start_idx:end_idx]
-        outlier_mask = (batch < lower_bound) | (batch > upper_bound)
-        quantized_batch = np.where(
-            outlier_mask,
-            batch,  # Keep outliers in full precision
-            levels[np.argmin(np.abs(batch[:, None] - levels[None, :]), axis=1)],
-        )
-        quantized_vector[start_idx:end_idx] = quantized_batch
-
-    return quantized_vector
 
 
 def plot_results(vector, quantized_vector, levels, approach_name, save_dir):
@@ -291,11 +346,17 @@ def parse_args():
         default=1000000,
         help="Sample size for optimizing quantization levels in large vectors",
     )
+    parser.add_argument(
+        "--use_multiprocessing",
+        action="store_true",
+        help="Enable multiprocessing for batch processing",
+    )
     args = parser.parse_args()
     return args
 
 
 def main():
+    global args  # Make args global to access in functions
     args = parse_args()
 
     set_seed(args.seed)
@@ -313,11 +374,14 @@ def main():
 
     results = {}
     for approach in approaches:
+        start_time = time.time()  # Start timing
         if approach == "uniform":
             quantized_vector, levels, l2_norm = uniform_quantization(vector, num_bits=args.num_bits)
+            latency = time.time() - start_time  # Compute latency
             print(f"L2 Norm ({approach.title()} Quantization): {l2_norm}")
+            print(f"Latency ({approach.title()} Quantization): {latency:.4f} seconds")
             plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir)
-            results[approach] = {"l2_norm": l2_norm}
+            results[approach] = {"l2_norm": l2_norm, "latency": latency}
         elif approach == "non-uniform":
             quantized_vector, levels, l2_norm = non_uniform_quantization(
                 vector,
@@ -326,9 +390,11 @@ def main():
                 device=device,
                 sample_size=args.sample_size,
             )
+            latency = time.time() - start_time  # Compute latency
             print(f"L2 Norm ({approach.title()} Quantization): {l2_norm}")
+            print(f"Latency ({approach.title()} Quantization): {latency:.4f} seconds")
             plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir)
-            results[approach] = {"l2_norm": l2_norm}
+            results[approach] = {"l2_norm": l2_norm, "latency": latency}
         elif approach == "easyquant":
             quantized_vector, levels, l2_norm = non_uniform_quantization_with_outliers(
                 vector,
@@ -338,9 +404,11 @@ def main():
                 threshold=args.threshold,
                 sample_size=args.sample_size,
             )
+            latency = time.time() - start_time  # Compute latency
             print(f"L2 Norm (EasyQuant Quantization): {l2_norm}")
+            print(f"Latency (EasyQuant Quantization): {latency:.4f} seconds")
             plot_results(vector, quantized_vector, levels, "EasyQuant", args.save_dir)
-            results[approach] = {"l2_norm": l2_norm}
+            results[approach] = {"l2_norm": l2_norm, "latency": latency}
         else:
             raise ValueError(f"Invalid approach selected: {approach}")
 

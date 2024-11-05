@@ -9,7 +9,7 @@ os.makedirs("images", exist_ok=True)
 
 
 def plot_original_vs_quantized(
-    v, quantized_vector, title="Original vs. Quantized Vector"
+    v, quantized_vector, title="Original vs. Quantized Vector", save_path=None
 ):
     """Plot the original vector and the quantized vector side by side"""
     indices = np.arange(len(v))
@@ -22,11 +22,11 @@ def plot_original_vs_quantized(
     plt.title(title)
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"images/{title.lower().replace(' ', '_').replace('.', '_')}.png")
+    plt.savefig(save_path)
 
 
 def plot_with_quantization_levels(
-    v, quantization_levels, title="Original Vector with Quantization Levels"
+    v, quantization_levels, title="Original Vector with Quantization Levels", save_path=None
 ):
     """Plot the original vector with the quantization levels"""
     indices = np.arange(len(v))
@@ -42,13 +42,14 @@ def plot_with_quantization_levels(
     plt.title(title)
     plt.legend(["Original Vector", "Quantization Levels"])
     plt.grid(True)
-    plt.savefig(f"images/{title.lower().replace(' ', '_').replace('.', '_')}.png")
+    plt.savefig(save_path)
 
 
 def plot_distribution(
     v,
     quantization_levels,
     title="Distribution of Original Vector and Quantization Levels",
+    save_path=None,
 ):
     """Plot the distribution of the original vector and the quantization levels"""
     plt.figure(figsize=(10, 6))
@@ -65,10 +66,10 @@ def plot_distribution(
     plt.title(title)
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"images/{title.lower().replace(' ', '_').replace('.', '_')}.png")
+    plt.savefig(save_path)
 
 
-def plot_quantization_grid(quantization_levels, title="Quantization Grid"):
+def plot_quantization_grid(quantization_levels, title="Quantization Grid", save_path=None):
     """Plot the quantization grid"""
     plt.figure(figsize=(10, 6))
     plt.scatter(
@@ -83,4 +84,4 @@ def plot_quantization_grid(quantization_levels, title="Quantization Grid"):
     plt.title(title)
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"images/{title.lower().replace(' ', '_').replace('.', '_')}.png")
+    plt.savefig(save_path)

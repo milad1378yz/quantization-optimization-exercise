@@ -39,6 +39,11 @@ For instance, to run the non-uniform quantization with a large vector, use:
 ```bash
 python src/main.py --vector_size large --approach non-uniform --device cuda
 ```
+To get all of the results, do this:
+```bash
+chmod +x run_all.sh
+./run_all.sh
+```
 
 ## Results
 After each run, the script saves results, including L2 norms and latencies, in the specified `save_dir`. Plots are generated to visualize quantization levels, distributions, and outlier handling.

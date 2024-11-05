@@ -22,14 +22,14 @@ def set_seed(seed):
         torch.cuda.manual_seed(seed)
 
 
-def setup_logger(save_dir,use_multiprocessing,vector_size):
+def setup_logger(save_dir):
     """Set up the logger to output to console and file."""
     logger = logging.getLogger("QuantizationLogger")
     logger.setLevel(logging.DEBUG)
 
     # Create handlers
     c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler(os.path.join(save_dir, f"logs_{vector_size}_{'multiprocess' if use_multiprocessing else 'singleprocess'}.txt"), mode="w")
+    f_handler = logging.FileHandler(os.path.join(save_dir, "logs.txt"), mode="w")
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.DEBUG)
 
@@ -338,15 +338,16 @@ def plot_results(vector, quantized_vector, levels, approach_name, save_dir, vect
             save_dir, f'distribution_{approach_name.lower().replace(" ", "_")}_{vector_size}.png'
         ),
     )
-    plot_with_quantization_levels(
-        vector,
-        quantized_vector,
-        levels,
-        title=f"Original Vector with Quantization Levels ({approach_name} - {vector_size})",
-        save_path=os.path.join(
-            save_dir, f'quantization_levels_{approach_name.lower().replace(" ", "_")}_{vector_size}.png'
-        ),
-    )
+    if len(vector) <= 100:
+        plot_original_vs_quantized(
+            vector,
+            quantized_vector,
+            title=f"Original vs. Quantized Vector ({approach_name} - {vector_size})",
+            save_path=os.path.join(
+                save_dir, f'original_vs_quantized_{approach_name.lower().replace(" ", "_")}_{vector_size}.png'
+            ),
+        )
+
 
 
 
@@ -385,6 +386,13 @@ def parse_args():
         action="store_true",
         help="Enable multiprocessing for batch processing",
     )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cpu",
+        choices=["cpu", "cuda"],
+        help="Device to use for optimization (cpu or cuda)",
+    )
     args = parser.parse_args()
     return args
 
@@ -397,11 +405,18 @@ def main():
         os.makedirs(args.save_dir)
 
     global logger  # Make logger global to access in functions
-    logger = setup_logger(args.save_dir, args.use_multiprocessing, args.vector_size)
+    logger = setup_logger(args.save_dir)
 
     set_seed(args.seed)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        if args.device == "cuda":
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")       
+    else:
+        device = torch.device("cpu")
+    
     logger.info(f"Using device: {device}")
 
     logger.info(f"Generating vector of size: {args.vector_size}")
@@ -464,14 +479,17 @@ def main():
     # Save results to 'results.txt' in save_dir
     results_path = os.path.join(
         args.save_dir,
-        f"results_{args.vector_size}_{'multiprocess' if args.use_multiprocessing else 'singleprocess'}.txt",
+        f"results.txt",
     )
-    with open(results_path, "w") as f:
+    with open(results_path, "a") as f:
+        f.write(f"Vector Size: {args.vector_size}___multiprocess: {args.use_multiprocessing}__device: {device}\n")
         for approach, metrics in results.items():
             f.write(f"{approach.title()} Quantization:\n")
             f.write(f"L2 Norm: {metrics['l2_norm']}\n")
             f.write(f"Latency: {metrics['latency']:.4f} seconds\n\n")
-    logger.info(f"Results saved to {results_path}")
+        f.write("--------------------------------------------------\n")
+        f.write("\n\n")
+    logger.info(f"Results saved to: {results_path}")
 
 
 if __name__ == "__main__":

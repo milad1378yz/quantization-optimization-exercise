@@ -9,4 +9,9 @@ services:
     volumes:
       - ../:/app
     command: tail -f /dev/null
+    # add GPU support if available
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
 

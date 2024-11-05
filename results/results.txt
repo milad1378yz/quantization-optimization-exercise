@@ -1,0 +1,128 @@
+Vector Size: large___multiprocess: True__device: cpu
+Uniform Quantization:
+L2 Norm: 0.00010433079663695092
+Latency: 0.3627 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 5.910010144761688e-05
+Latency: 6.1353 seconds
+
+Easyquant Quantization:
+L2 Norm: 5.53606246639008e-05
+Latency: 4.2594 seconds
+
+--------------------------------------------------
+
+
+Vector Size: small___multiprocess: True__device: cpu
+Uniform Quantization:
+L2 Norm: 0.1132813005805658
+Latency: 0.0001 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 0.05016708719707913
+Latency: 0.7756 seconds
+
+Easyquant Quantization:
+L2 Norm: 0.0469041575988048
+Latency: 0.1232 seconds
+
+--------------------------------------------------
+
+
+Vector Size: large___multiprocess: False__device: cpu
+Uniform Quantization:
+L2 Norm: 0.00010433079663695092
+Latency: 0.3629 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 5.910010144761688e-05
+Latency: 5.9428 seconds
+
+Easyquant Quantization:
+L2 Norm: 5.53606246639008e-05
+Latency: 3.7779 seconds
+
+--------------------------------------------------
+
+
+Vector Size: small___multiprocess: False__device: cpu
+Uniform Quantization:
+L2 Norm: 0.1132813005805658
+Latency: 0.0001 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 0.05016708719707913
+Latency: 0.7500 seconds
+
+Easyquant Quantization:
+L2 Norm: 0.0469041575988048
+Latency: 0.1186 seconds
+
+--------------------------------------------------
+
+
+Vector Size: large___multiprocess: False__device: cuda
+Uniform Quantization:
+L2 Norm: 0.00010433079663695092
+Latency: 0.3742 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 5.8805188827217544e-05
+Latency: 1.7241 seconds
+
+Easyquant Quantization:
+L2 Norm: 5.6564380055668275e-05
+Latency: 0.9334 seconds
+
+--------------------------------------------------
+
+
+Vector Size: small___multiprocess: False__device: cuda
+Uniform Quantization:
+L2 Norm: 0.1132813005805658
+Latency: 0.0001 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 0.07560961756930877
+Latency: 1.0581 seconds
+
+Easyquant Quantization:
+L2 Norm: 0.06218252702065761
+Latency: 0.2460 seconds
+
+--------------------------------------------------
+
+
+Vector Size: large___multiprocess: True__device: cuda
+Uniform Quantization:
+L2 Norm: 0.00010433079663695092
+Latency: 0.3690 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 5.8805188827217544e-05
+Latency: 1.8290 seconds
+
+Easyquant Quantization:
+L2 Norm: 5.6564380055668275e-05
+Latency: 1.0640 seconds
+
+--------------------------------------------------
+
+
+Vector Size: small___multiprocess: True__device: cuda
+Uniform Quantization:
+L2 Norm: 0.1132813005805658
+Latency: 0.0001 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 0.07560961756930877
+Latency: 1.0374 seconds
+
+Easyquant Quantization:
+L2 Norm: 0.06218252702065761
+Latency: 0.2388 seconds
+
+--------------------------------------------------
+
+

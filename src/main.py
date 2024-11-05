@@ -326,44 +326,28 @@ def non_uniform_quantization_with_outliers(
     return quantized_vector, optimized_levels, l2_norm
 
 
-def plot_results(vector, quantized_vector, levels, approach_name, save_dir):
-    """Generate and save plots for quantization results."""
-    # For large vectors, skip plotting due to performance constraints
-    if len(vector) > 100000:
-        logger.info(f"Skipping plots for large vector in {approach_name}.")
-        return
+def plot_results(vector, quantized_vector, levels, approach_name, save_dir, vector_size):
+    """Generate and save selective plots for quantization results."""
 
-    plot_original_vs_quantized(
+    # Generate only distribution and vector with levels plots
+    plot_distribution(
         vector,
-        quantized_vector,
-        title=f"Original vs. Quantized Vector ({approach_name})",
+        levels,
+        title=f"Distribution of Original Vector and Quantization Levels ({approach_name} - {vector_size})",
         save_path=os.path.join(
-            save_dir, f'original_vs_quantized_{approach_name.lower().replace(" ", "_")}.png'
+            save_dir, f'distribution_{approach_name.lower().replace(" ", "_")}_{vector_size}.png'
         ),
     )
     plot_with_quantization_levels(
         vector,
+        quantized_vector,
         levels,
-        title=f"Original Vector with Quantization Levels ({approach_name})",
+        title=f"Original Vector with Quantization Levels ({approach_name} - {vector_size})",
         save_path=os.path.join(
-            save_dir, f'vector_with_levels_{approach_name.lower().replace(" ", "_")}.png'
+            save_dir, f'quantization_levels_{approach_name.lower().replace(" ", "_")}_{vector_size}.png'
         ),
     )
-    plot_distribution(
-        vector,
-        levels,
-        title=f"Distribution of Original Vector and Quantization Levels ({approach_name})",
-        save_path=os.path.join(
-            save_dir, f'distribution_{approach_name.lower().replace(" ", "_")}.png'
-        ),
-    )
-    plot_quantization_grid(
-        levels,
-        title=f"Quantization Grid ({approach_name})",
-        save_path=os.path.join(
-            save_dir, f'quantization_grid_{approach_name.lower().replace(" ", "_")}.png'
-        ),
-    )
+
 
 
 def parse_args():
@@ -437,7 +421,7 @@ def main():
             latency = time.time() - start_time  # Compute latency
             logger.info(f"L2 Norm ({approach.title()} Quantization): {l2_norm}")
             logger.info(f"Latency ({approach.title()} Quantization): {latency:.4f} seconds")
-            plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir)
+            plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir, args.vector_size)
             results[approach] = {"l2_norm": l2_norm, "latency": latency}
         elif approach == "non-uniform":
             quantized_vector, levels, l2_norm = non_uniform_quantization(
@@ -450,7 +434,7 @@ def main():
             latency = time.time() - start_time  # Compute latency
             logger.info(f"L2 Norm ({approach.title()} Quantization): {l2_norm}")
             logger.info(f"Latency ({approach.title()} Quantization): {latency:.4f} seconds")
-            plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir)
+            plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir, args.vector_size)
             results[approach] = {"l2_norm": l2_norm, "latency": latency}
         elif approach == "easyquant":
             quantized_vector, levels, l2_norm = non_uniform_quantization_with_outliers(
@@ -464,7 +448,7 @@ def main():
             latency = time.time() - start_time  # Compute latency
             logger.info(f"L2 Norm (EasyQuant Quantization): {l2_norm}")
             logger.info(f"Latency (EasyQuant Quantization): {latency:.4f} seconds")
-            plot_results(vector, quantized_vector, levels, "EasyQuant", args.save_dir)
+            plot_results(vector, quantized_vector, levels, approach.title(), args.save_dir, args.vector_size)
             results[approach] = {"l2_norm": l2_norm, "latency": latency}
         else:
             logger.error(f"Invalid approach selected: {approach}")

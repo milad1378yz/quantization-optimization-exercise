@@ -4,9 +4,9 @@ Latency: 0.0003 seconds
 
 Non-Uniform Quantization:
 L2 Norm: 0.05016708719707913
-Latency: 1.5167 seconds
+Latency: 1.7593 seconds
 
 Easyquant Quantization:
 L2 Norm: 0.0469041575988048
-Latency: 0.5531 seconds
+Latency: 0.4189 seconds
 

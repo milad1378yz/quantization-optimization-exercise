@@ -22,14 +22,14 @@ def set_seed(seed):
         torch.cuda.manual_seed(seed)
 
 
-def setup_logger(save_dir):
+def setup_logger(save_dir,use_multiprocessing,vector_size):
     """Set up the logger to output to console and file."""
     logger = logging.getLogger("QuantizationLogger")
     logger.setLevel(logging.DEBUG)
 
     # Create handlers
     c_handler = logging.StreamHandler()
-    f_handler = logging.FileHandler(os.path.join(save_dir, "logs.txt"), mode="w")
+    f_handler = logging.FileHandler(os.path.join(save_dir, f"logs_{vector_size}_{'multiprocess' if use_multiprocessing else 'singleprocess'}.txt"), mode="w")
     c_handler.setLevel(logging.INFO)
     f_handler.setLevel(logging.DEBUG)
 
@@ -413,7 +413,7 @@ def main():
         os.makedirs(args.save_dir)
 
     global logger  # Make logger global to access in functions
-    logger = setup_logger(args.save_dir)
+    logger = setup_logger(args.save_dir, args.use_multiprocessing, args.vector_size)
 
     set_seed(args.seed)
 

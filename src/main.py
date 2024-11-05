@@ -91,7 +91,7 @@ def uniform_quantization(vector, num_bits=3, min_level=-4.0, max_level=4.0):
     num_levels = 2**num_bits
     levels = np.linspace(min_level, max_level, num_levels)
     quantized_vector = levels[np.argmin(np.abs(vector[:, None] - levels[None, :]), axis=1)]
-    l2_norm = np.linalg.norm(vector - quantized_vector)
+    l2_norm = np.linalg.norm(vector - quantized_vector) / len(vector)
     return quantized_vector, levels, l2_norm
 
 
@@ -148,7 +148,7 @@ def non_uniform_quantization(
         vector, optimized_levels, use_multiprocessing=args.use_multiprocessing
     )
 
-    l2_norm = np.linalg.norm(vector - quantized_vector)
+    l2_norm = np.linalg.norm(vector - quantized_vector) / len(vector)
     return quantized_vector, optimized_levels, l2_norm
 
 
@@ -319,7 +319,7 @@ def non_uniform_quantization_with_outliers(
         vector, optimized_levels, threshold=threshold, use_multiprocessing=args.use_multiprocessing
     )
 
-    l2_norm = np.linalg.norm(vector - quantized_vector)
+    l2_norm = np.linalg.norm(vector - quantized_vector) / len(vector)
     return quantized_vector, optimized_levels, l2_norm
 
 
@@ -475,7 +475,10 @@ def main():
         )
 
     # Save results to 'results.txt' in save_dir
-    results_path = os.path.join(args.save_dir, "results.txt")
+    results_path = os.path.join(
+        args.save_dir, 
+        f"results_{args.vector_size}_{'multiprocess' if args.use_multiprocessing else 'singleprocess'}.txt"
+    )
     with open(results_path, "w") as f:
         for approach, metrics in results.items():
             f.write(f"{approach.title()} Quantization:\n")

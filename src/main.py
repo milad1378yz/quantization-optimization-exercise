@@ -189,7 +189,7 @@ def quantize_vector_in_batches(vector, levels, batch_size=1000000, use_multiproc
 
 
 def identify_outliers(v, threshold=3.0):
-    """Identify outliers in the vector based on a threshold."""
+    """Identify outliers in the vector based on an n-sigma threshold."""
     mean, std = torch.mean(v), torch.std(v)
     outliers = torch.abs(v - mean) > (threshold * std)
     return outliers
@@ -197,14 +197,14 @@ def identify_outliers(v, threshold=3.0):
 
 def quantization_loss_with_outliers(v, q_levels, mask):
     """
-    Compute quantization loss, ignoring outliers based on mask.
+    Compute quantization loss for values excluding outliers based on the mask.
 
     Optimization Problem:
-    Minimize the L2 norm between the quantized vector and the original vector,
+    Minimize the L2 norm (mean squared error) between the quantized and original vector,
     excluding outliers:
-    L(q) = (1/N_normal) * Σ_i [min_k (v_i - q_k)^2], for i where mask_i is False
+    L(q) = (1/N_normal) * Σ_i [min_k (v_i - q_k)^2] for i where mask_i is False.
     """
-    v_normal = v[~mask]
+    v_normal = v[~mask]  # Keep only the non-outlier values
     distances = (v_normal.view(-1, 1) - q_levels.view(1, -1)) ** 2
     min_distances, _ = distances.min(dim=1)
     return min_distances.mean()
@@ -213,7 +213,11 @@ def quantization_loss_with_outliers(v, q_levels, mask):
 def quantize_vector_with_outliers_in_batches(
     vector, levels, threshold=3.0, batch_size=1000000, use_multiprocessing=False
 ):
-    """Quantize a large vector with outlier handling in batches."""
+    """
+    Quantize a large vector with outlier handling in batches.
+
+    Outliers are identified and kept at full precision.
+    """
     quantized_vector = np.empty_like(vector)
     num_batches = int(np.ceil(len(vector) / batch_size))
     logger.debug(f"Quantizing vector with outliers in {num_batches} batches.")
@@ -225,12 +229,10 @@ def quantize_vector_with_outliers_in_batches(
 
     if use_multiprocessing and num_batches > 1:
         logger.debug("Using multiprocessing for batch quantization with outliers.")
-        # Prepare batches
         batches = [
             vector[i * batch_size : min((i + 1) * batch_size, len(vector))]
             for i in range(num_batches)
         ]
-        # Prepare partial function with fixed parameters
         quantize_partial = partial(
             quantize_batch_with_outliers,
             levels=levels,
@@ -239,7 +241,6 @@ def quantize_vector_with_outliers_in_batches(
         )
         with multiprocessing.Pool() as pool:
             results = pool.map(quantize_partial, batches)
-        # Combine results
         for i, quantized_batch in enumerate(results):
             start_idx = i * batch_size
             end_idx = start_idx + len(quantized_batch)
@@ -256,7 +257,7 @@ def quantize_vector_with_outliers_in_batches(
 
 
 def quantize_batch_with_outliers(batch, levels, lower_bound, upper_bound):
-    """Helper function to quantize a single batch with outlier handling."""
+    """Quantize a single batch, keeping outliers in full precision."""
     outlier_mask = (batch < lower_bound) | (batch > upper_bound)
     quantized_batch = np.where(
         outlier_mask,
@@ -295,6 +296,8 @@ def non_uniform_quantization_with_outliers(
 
     torch_vector = torch.tensor(vector_sample, dtype=torch.float32, device=device)
     outlier_mask = identify_outliers(torch_vector, threshold)
+
+    # Initialize quantization levels as in paper
     q_levels = torch.nn.Parameter(
         torch.rand(num_levels, device=device) * (max_level - min_level) + min_level
     )
@@ -476,8 +479,8 @@ def main():
 
     # Save results to 'results.txt' in save_dir
     results_path = os.path.join(
-        args.save_dir, 
-        f"results_{args.vector_size}_{'multiprocess' if args.use_multiprocessing else 'singleprocess'}.txt"
+        args.save_dir,
+        f"results_{args.vector_size}_{'multiprocess' if args.use_multiprocessing else 'singleprocess'}.txt",
     )
     with open(results_path, "w") as f:
         for approach, metrics in results.items():

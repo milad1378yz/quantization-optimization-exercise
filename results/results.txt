@@ -1,0 +1,12 @@
+Uniform Quantization:
+L2 Norm: 1043.3079663695087
+Latency: 1.0135 seconds
+
+Non-Uniform Quantization:
+L2 Norm: 591.0009589004425
+Latency: 17.2981 seconds
+
+Easyquant Quantization:
+L2 Norm: 553.6062466390083
+Latency: 15.2433 seconds
+

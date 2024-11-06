@@ -3,6 +3,11 @@
 ## Introduction
 This project focuses on the optimization of quantization processes, including uniform, non-uniform, and easy quantization methods. The methods aim to minimize the L2 norm between the original and quantized vectors while handling outliers effectively.
 
+## Requirements
+Cuda >= 11.0(Optional)
+Python >= 3.6
+Docker(Optional)
+
 ## Installation
 
 ### Clone the Repository
